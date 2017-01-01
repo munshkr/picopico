@@ -2,6 +2,10 @@
 
 Small 8-bit chiptune player
 
+## Schematic
+
+![](schematic.png?raw=true)
+
 ## TODO
 
 * Change current parser for a standard MML parser
