@@ -1,19 +1,25 @@
 /*
  * Attune
+ * Copyright (C) 2017  Damián Silvani, David Johnson-Davies
  *
- * Original coded by
- * David Johnson-Davies - www.technoblogy.com - 27th March 2016
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * The main differences are:
- *   - Multiple waveforms (Square, Triangle, Noise)
- *   - Envelopes
- *   - MML parser
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Original code by David Johnson-Davies
+ * www.technoblogy.com - 27th March 2016
  *
  * ATtiny85 @ 8MHz (internal oscillator; BOD disabled)
  *
- * CC BY 4.0
- * Licensed under a Creative Commons Attribution 4.0 International license:
- * http://creativecommons.org/licenses/by/4.0/
 */
 
 int Scale[] = { 0, 13717, 14532, 15397, 16312, 17282, 0, 18310, 19398, 20552, 21774, 23069, 24440, 25894, 0 };
