@@ -446,7 +446,6 @@ function playSong(mmlData) {
       }
     },
     {
-    {
       re: /t(\d*)/g,
       func: function(m) {
         return { name: "t", val: toInt(m[1]) };
