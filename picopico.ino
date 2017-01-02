@@ -61,12 +61,26 @@ ISR(WDT_vect) {
 // Generate triangle waves on 4 channels
 ISR(TIMER0_COMPA_vect) {
   signed char mask, temp, sum=0;
-  for (int c=0; c<3; c++) {
+
+  // Voice 1 and 2: Squares
+  // TODO We want pulses, not only squares!
+  // (i.e. configurable duty cycle/pulse width)
+  for (int c=0; c<2; c++) {
     acc[c] = acc[c] + freqs[c];
-    temp = acc[c] >> 8;
+    temp = (acc[c] >> 8) & 0x80;
     mask = temp >> 15;
     sum = sum + ((char)(temp ^ mask) >> 1);
   }
+
+  // Voice 3: Triangle
+  acc[2] = acc[2] + freqs[2];
+  temp = acc[2] >> 8;
+  mask = temp >> 15;
+  sum = sum + ((char)(temp ^ mask) >> 1);
+
+  // Voice 4: Noise
+  // TODO with a Galois LFSR?
+
   OCR1B = sum;
 }
 
