@@ -22,6 +22,8 @@
  *
 */
 
+#include "tune.h"
+
 int scale[] = {0, 13717, 14532, 15397, 16312, 17282, 0, 18310, 19398,
   20552, 21774, 23069, 24440, 25894, 0};
 
@@ -30,12 +32,7 @@ const int ErrorPin = 0;  // Error LED on PB0
 
 // Note buffer
 volatile unsigned int acc[] = {Silence, Silence, Silence, Silence};
-volatile unsigned int freqs[] = {0, 0, 0, 0 };
-
-const char Tune[] PROGMEM =
-"C(-1:C)Fe 2,dE | 4,F(-1:D) 2,eF 4,A(-1:G)g | 2,f(-1:F)eF(-1:E)G 4,f(-1:D)e(-1:C) |"
-"2,d(-2:B)Edc 4,b(-2:G)G | c(-1:C)Fe 2,dE | 4,F(-1:D) 2,eF 4,A(-1:G)g |"
-"2,A(-1:F)gA(-1:E)Cb(-1:G)gB(-1:B)D | 4,c(-1:C)g 8,C ^(^^)";
+volatile unsigned int freqs[] = {0, 0, 0, 0};
 
 // Globals persist throughout tune
 int nextTick = 0;
