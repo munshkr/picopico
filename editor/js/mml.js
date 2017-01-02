@@ -267,6 +267,7 @@ function playSong(mmlData) {
       case "&":
         this.tie = true;
         break;
+      /*
       case "/:":
         this.loopStack.push({
           index: this.index,
@@ -291,6 +292,7 @@ function playSong(mmlData) {
           this.index = peek.exit;
         }
         break;
+      */
       case "v":
         this.toneGenerator.setVelocity(cmd.val);
         break;
@@ -413,6 +415,7 @@ function playSong(mmlData) {
       }
     },
     {
+    {
       re: /t(\d*)/g,
       func: function(m) {
         return { name: "t", val: toInt(m[1]) };
@@ -442,6 +445,7 @@ function playSong(mmlData) {
         return { name: m[0] };
       }
     },
+    /*
     {
       re: /\/:(\d*)/g,
       func: function(m) {
@@ -460,6 +464,7 @@ function playSong(mmlData) {
         return { name: "/" };
       }
     },
+    */
     {
       re: /([cdefgab])([-+]?)(\d*)(\.*)/g,
       func: function(m) {
