@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>picopico editor</title>
+    <style type="text/css" media="screen">
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      #editor {
+        position: absolute;
+        top: 24px;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="toolbar">
+      <button title="Ctrl+Enter" onclick="play()">Play</button>
+      <button onclick="stop()">Stop</button>
+    </div>
+
+    <div id="editor"><pre></pre></div>
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.5/ace.js"></script>
+    <script type="text/javascript" src="js/pico.min.js"></script>
+    <script type="text/javascript" src="js/mml.js"></script>
+
+    <script>
+      var editor = ace.edit('editor');
+
+      function play() {
+        stop();
+        Pico.play(playSong(editor.getValue()));
+      }
+
+      function stop() {
+        Pico.pause();
+      }
+
+      //editor.setTheme('ace/theme/monokai');
+      //editor.getSession().setMode('ace/mode/javascript');
+
+      editor.commands.addCommand({
+        name: 'play/stop',
+        bindKey: {win: "Ctrl-Enter", "mac": "Cmd-Enter"},
+        exec: function(editor) {
+          console.log("play");
+          play();
+        }
+      });
+
+      editor.getSession().on('change', function(e) {
+        localStorage.setItem('document', editor.getValue());
+      });
+
+      var savedDoc = localStorage.getItem('document');
+      if (savedDoc && savedDoc !== '') {
+        editor.setValue(savedDoc);
+        editor.clearSelection();
+      }
+
+      editor.focus();
+    </script>
+  </body>
+</html>
