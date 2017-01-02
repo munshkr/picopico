@@ -183,51 +183,6 @@ function playSong(mmlData) {
     return Envelope;
   })();
 
-  var DelayNode = (function() {
-    function DelayNode(opts) {
-      this.buffer = new Float32Array(65536);
-      this.rdIndex = 0;
-      this.wrIndex = (this.time / 1000 * Pico.sampleRate)|0;
-
-      this.time = 125;
-      this.feedback = 0.25;
-      this.wet = 0.45;
-
-      if (opts) {
-        this.setParams(opts);
-      }
-    }
-
-    DelayNode.prototype.setParams = function(opts) {
-      if (opts.time) {
-        this.time = opts.time;
-        this.wrIndex = this.rdIndex + ((this.time / 1000 * Pico.sampleRate)|0);
-        this.wrIndex &= 65535;
-      }
-      if (opts.feedback) {
-        this.feedback = opts.feedback;
-      }
-      if (opts.wet) {
-        this.wet = opts.wet;
-      }
-    };
-
-    DelayNode.prototype.process = function(cell) {
-      for (var i = 0, imax = cell.length; i < imax; ++i) {
-        var x0 = cell[i];
-        var x1 = this.buffer[this.rdIndex++];
-        cell[i] = x0 * (1 - this.wet) + (x1 * this.wet);
-        this.buffer[this.wrIndex++] = x0 - (x1 * this.feedback);
-      }
-      this.wrIndex &= 65535;
-      this.rdIndex &= 65535;
-
-      return cell;
-    };
-
-    return DelayNode;
-  })();
-
   var MMLVoice = (function() {
     function MMLVoice(toneGenerator) {
       this.toneGenerator = toneGenerator;
@@ -284,16 +239,6 @@ function playSong(mmlData) {
       var peek;
 
       switch (cmd.name) {
-      case "@":
-        switch (cmd.val) {
-        case 0:
-          this.toneGenerator = new PwmGenerator();
-          break;
-        case 1:
-          this.toneGenerator = new NoiseGenerator();
-          break;
-        }
-        break;
       case "@w":
         if (this.toneGenerator && this.toneGenerator.setWidth) {
           this.toneGenerator.setWidth(cmd.val);
@@ -302,11 +247,6 @@ function playSong(mmlData) {
       case "@n":
         if (this.toneGenerator && this.toneGenerator.setNoise) {
           this.toneGenerator.setNoise(cmd.val);
-        }
-        break;
-      case "@e1":
-        if (this.toneGenerator && this.toneGenerator.setParams) {
-          this.toneGenerator.setParams(cmd.val);
         }
         break;
       case "t":
@@ -461,12 +401,6 @@ function playSong(mmlData) {
 
   var MMLCommands = [
     {
-      re: /@e1,(\d+,\d+,\d+,\d+)/g,
-      func: function(m) {
-        return { name: "@e1", val: m[1].split(",").map(toInt) };
-      }
-    },
-    {
       re: /@w(\d*)/g,
       func: function(m) {
         return { name: "@w", val: toInt(m[1]) };
@@ -476,12 +410,6 @@ function playSong(mmlData) {
       re: /@n(\d*)/g,
       func: function(m) {
         return { name: "@n", val: toInt(m[1]) };
-      }
-    },
-    {
-      re: /@(\d*)/g,
-      func: function(m) {
-        return { name: "@", val: toInt(m[1]) };
       }
     },
     {
