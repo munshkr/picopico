@@ -483,9 +483,9 @@ function playSong(mmlData) {
       }
     },
     {
-      re: /([r])([-+]?)(\d*)(\.*)/g,
+      re: /([r])(\d*)(\.*)/g,
       func: function(m) {
-        return { name: "rest", note: m[1], len: toInt(m[3]), dot: m[4].length };
+        return { name: "rest", note: m[1], len: toInt(m[2]), dot: m[3].length };
       }
     },
     {
