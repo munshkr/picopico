@@ -75,6 +75,37 @@ function playSong(mmlData) {
     return PwmGenerator;
   })();
 
+  var TriangleGenerator = (function() {
+    function TriangleGenerator() {
+      ToneGenerator.call(this);
+      this.env = new Envelope();
+      this.phase = 0;
+      this.phaseIncr = 0;
+    }
+    inherits(TriangleGenerator, ToneGenerator);
+
+    TriangleGenerator.prototype.setFreq = function(val) {
+      this.phaseIncr = val / this.sampleRate;
+      this.env.bang();
+    };
+
+    TriangleGenerator.prototype.process = function() {
+      for (var i = 0, imax = this.cell.length; i < imax; i++) {
+        this.cell[i] = (this.phase < 0.5 ? this.phase : 1-this.phase) * this.velocity * 0.8;
+        this.phase += this.phaseIncr;
+        while (this.phase >= 1) {
+          this.phase -= 1;
+        }
+      }
+
+      this.env.process(this.cell);
+
+      return this.cell;
+    };
+
+    return TriangleGenerator;
+  })();
+
   var NoiseGenerator = (function() {
     function NoiseGenerator() {
       ToneGenerator.call(this);
@@ -348,7 +379,7 @@ function playSong(mmlData) {
       this.voices = [
         new MMLVoice(new PwmGenerator),
         new MMLVoice(new PwmGenerator),
-        new MMLVoice(new PwmGenerator),
+        new MMLVoice(new TriangleGenerator),
         new MMLVoice(new NoiseGenerator)
       ];
 
