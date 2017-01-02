@@ -1,5 +1,5 @@
 /*
- * Attune
+ * picopico
  * Copyright (C) 2017  Damián Silvani, David Johnson-Davies
  *
  * This program is free software: you can redistribute it and/or modify
