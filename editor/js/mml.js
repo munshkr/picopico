@@ -289,26 +289,27 @@ function playSong(mmlData) {
       case "o":
         this.octave = cmd.val;
         break;
-      case "<":
+      case ">":
         this.octave += 1;
         break;
-      case ">":
+      case "<":
         this.octave -= 1;
         break;
       case "&":
         this.tie = true;
         break;
-      /*
-      case "/:":
+      case "[":
         this.loopStack.push({
           index: this.index,
-          count: cmd.val || 2,
-          exit: 0
+          firstIter: true
         });
         break;
-      case ":/":
+      case "]":
         peek = this.loopStack[this.loopStack.length - 1];
-        peek.exit = this.index;
+        if (peek.firstIter) {
+          peek.count = (cmd.val || 2);
+          peek.firstIter = false;
+        }
         peek.count -= 1;
         if (peek.count <= 0) {
           this.loopStack.pop();
@@ -316,14 +317,6 @@ function playSong(mmlData) {
           this.index = peek.index;
         }
         break;
-      case "/":
-        peek = this.loopStack[this.loopStack.length - 1];
-        if (peek.count === 1) {
-          this.loopStack.pop();
-          this.index = peek.exit;
-        }
-        break;
-      */
       case "v":
         this.toneGenerator.setVelocity(cmd.val);
         break;
@@ -475,26 +468,18 @@ function playSong(mmlData) {
         return { name: m[0] };
       }
     },
-    /*
     {
-      re: /\/:(\d*)/g,
+      re: /\[/g,
       func: function(m) {
-        return { name: "/:", val: toInt(m[1]) };
+        return { name: "[" };
       }
     },
     {
-      re: /:\//g,
+      re: /\](\d*)/g,
       func: function(m) {
-        return { name: ":/" };
+        return { name: "]", val: toInt(m[1]) };
       }
     },
-    {
-      re: /\//g,
-      func: function(m) {
-        return { name: "/" };
-      }
-    },
-    */
     {
       re: /([cdefgab])([-+]?)(\d*)(\.*)/g,
       func: function(m) {
