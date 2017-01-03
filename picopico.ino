@@ -81,11 +81,20 @@ ISR(TIMER0_COMPA_vect) {
   sum = sum + ((char)(temp ^ mask) >> 1);
 
   // Voice 4: Noise
+  //
+  // This noise generator is somewhat based on the mechanism found in the NES APU.
+  // The NES has a linear-feedback shift register for generating pseudorandom numbers.
+  // It starts with a register set to 1, and when the period counter reaches 0, it
+  // clocks the shift register.
+  // The LFSR performs an Exclusive OR between bit 0 and bit 1, then shifts to the
+  // right, and sets/resets bit 15 based on the exclusive OR result.
+  //
   acc[3] = acc[3] + freqs[3];
   temp = (acc[3] >> 8) & 0x80;
+  // if temp != oldTemp, trigger the LFSR to generate a new pseudorandom value
   if (temp != oldTemp) {
-    lfsrOut = (lfsr & 1) ^ ((lfsr & 2) >> 1);
-    lfsr = (lfsr >> 1) | (lfsrOut << 14);
+    lfsrOut = (lfsr & 1) ^ ((lfsr & 2) >> 1);  // output is bit 0 XOR bit 1
+    lfsr = (lfsr >> 1) | (lfsrOut << 14);      // shift and include output on bit 15
     oldTemp = temp;
   }
   sum = sum + (char)(lfsrOut<<6);
