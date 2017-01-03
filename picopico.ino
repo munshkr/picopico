@@ -33,6 +33,7 @@ const int ErrorPin = 0;  // Error LED on PB0
 // Note buffer
 volatile unsigned int acc[] = {Silence, Silence, Silence, Silence};
 volatile unsigned int freqs[] = {0, 0, 0, 0};
+volatile unsigned char pw[] = {0x80, 0x80};
 
 // Globals persist throughout tune
 int nextTick = 0;
@@ -65,20 +66,18 @@ ISR(TIMER0_COMPA_vect) {
   unsigned char temp;
   signed char stemp, mask, sum = 0;
 
-  // Voice 1 and 2: Squares
-  // TODO We want pulses, not only squares!
-  // (i.e. configurable duty cycle/pulse width)
-  for (int c=0; c<2; c++) {
-    acc[c] = acc[c] + freqs[c];
-    temp = (acc[c] >> 8) & 0x80;
-    sum += (temp >> 1);
+  // Voice 1 and 2: Pulses
+  for (int c = 0; c < 2; c++) {
+    acc[c] += freqs[c];
+    temp = (acc[c] >> 8) & pw[c];
+    sum += (temp ? 0x40 : 0);
   }
 
   // Voice 3: Triangle
-  acc[2] = acc[2] + freqs[2];
+  acc[2] += freqs[2];
   stemp = acc[2] >> 8;
   mask = stemp >> 7;
-  sum = sum + ((stemp ^ mask) >> 1);
+  sum += (stemp ^ mask) >> 1;
 
   // Voice 4: Noise
   //
@@ -89,7 +88,7 @@ ISR(TIMER0_COMPA_vect) {
   // The LFSR performs an Exclusive OR between bit 0 and bit 1, then shifts to the
   // right, and sets/resets bit 15 based on the exclusive OR result.
   //
-  acc[3] = acc[3] + freqs[3];
+  acc[3] += freqs[3];
   temp = (acc[3] >> 8) & 0x80;
   // if temp != oldTemp, trigger the LFSR to generate a new pseudorandom value
   if (temp != oldTemp) {
@@ -97,7 +96,7 @@ ISR(TIMER0_COMPA_vect) {
     lfsr = (lfsr >> 1) | (lfsrOut << 14);      // shift and include output on bit 15
     oldTemp = temp;
   }
-  sum = sum + (lfsrOut<<6);
+  sum += lfsrOut << 6;
 
   OCR1B = sum;
 }
