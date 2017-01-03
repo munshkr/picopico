@@ -37,7 +37,9 @@ volatile unsigned int freqs[] = {0, 0, 0, 0};
 // Globals persist throughout tune
 int nextTick = 0;
 int tunePtr = 0;
-char octave = 0, lastIndex = 0, duration = 4;
+char octave = 0, lastIndex = 0, duration = 4, lfsrOut = 0;
+uint16_t lfsr = 1;
+signed char oldTemp = 0;
 
 // Global tick counter
 volatile unsigned int globalTicks = 0;
@@ -79,7 +81,14 @@ ISR(TIMER0_COMPA_vect) {
   sum = sum + ((char)(temp ^ mask) >> 1);
 
   // Voice 4: Noise
-  // TODO with a Galois LFSR?
+  acc[3] = acc[3] + freqs[3];
+  temp = (acc[3] >> 8) & 0x80;
+  if (temp != oldTemp) {
+    lfsrOut = (lfsr & 1) ^ ((lfsr & 2) >> 1);
+    lfsr = (lfsr >> 1) | (lfsrOut << 14);
+    oldTemp = temp;
+  }
+  sum = sum + (char)(lfsrOut<<6);
 
   OCR1B = sum;
 }
