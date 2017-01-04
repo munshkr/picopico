@@ -33,7 +33,8 @@ const int ErrorPin = 0;  // Error LED on PB0
 // Note buffer
 volatile unsigned int acc[] = {Silence, Silence, Silence, Silence};
 volatile unsigned int freqs[] = {0, 0, 0, 0};
-volatile unsigned char pw[] = {0x80, 0x80};
+volatile byte pw[] = {0x80, 0x80};
+volatile byte amp[] = {0xff, 0xff, 0xff};
 
 // Globals persist throughout tune
 int nextTick = 0;
@@ -70,7 +71,7 @@ ISR(TIMER0_COMPA_vect) {
   for (int c = 0; c < 2; c++) {
     acc[c] += freqs[c];
     temp = (acc[c] >> 8) & pw[c];
-    sum += (temp ? 0x40 : 0);
+    sum += (temp ? amp[c] : 0) >> 2;
   }
 
   // Voice 3: Triangle
@@ -96,7 +97,7 @@ ISR(TIMER0_COMPA_vect) {
     lfsr = (lfsr >> 1) | (lfsrOut << 14);      // shift and include output on bit 15
     oldTemp = temp;
   }
-  sum += lfsrOut << 6;
+  sum += (lfsrOut ? amp[2] : 0) >> 2;
 
   OCR1B = sum;
 }
