@@ -24,6 +24,9 @@
 
 #include "tune.h"
 
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
 int scale[] = {0, 13717, 14532, 15397, 16312, 17282, 0, 18310, 19398,
   20552, 21774, 23069, 24440, 25894, 0};
 
@@ -51,15 +54,21 @@ unsigned int ticks() {
   unsigned long t;
   uint8_t oldSREG = SREG;
   cli();
-  t = globalTicks;
+  t = globalTicks >> 3;  // for now divide by 8, because watchdog timer
+                         // is too fast now for playing a song...
   SREG = oldSREG;
   return t;
 }
 
-// Watchdog interrupt counts ticks (1/8 sec)
+// Watchdog interrupt counts ticks (every 16ms)
 ISR(WDT_vect) {
   WDTCR |= 1<<WDIE;
   globalTicks++;
+
+  // test: linear amplitude decay
+  for (int c = 0; c < 3; c++) {
+    amp[c] = MAX(amp[c] - 6, 0);
+  }
 }
 
 // Generate triangle waves on 4 channels
@@ -122,8 +131,8 @@ void setup() {
   OCR0A = 49;                    // Divide by 400
   TIMSK = 1<<OCIE0A;             // Enable compare match, disable overflow
 
-  // Set up Watchdog timer for 8 Hz interrupt for ticks timer.
-  WDTCR = 1<<WDIE | 3<<WDP0;     // 8 Hz interrupt
+  // Set up Watchdog timer for 128 Hz (max) interrupt for ticks timer.
+  WDTCR = 1<<WDIE;     // by default, 128 Hz interrupt
 }
 
 // Main loop - Parse Ample tune notation ****************
@@ -161,7 +170,9 @@ void loop() {
         if (lastIndex && (index < lastIndex) && !lowercase) octave++;
         if (lastIndex && (index > lastIndex) && lowercase) octave--;
       } else setOctave = 0;
-      freqs[chan++] = scale[index] >> (4 - octave);
+      freqs[chan] = scale[index] >> (4 - octave);
+      amp[chan] = 0xff;
+      chan++;
       lastIndex = index;
       readNote = 1; sign = 0;
     } else digitalWrite(ErrorPin, 1);  // Illegal character
