@@ -90,12 +90,12 @@ ISR(TIMER0_COMPA_vect) {
   // right, and sets/resets bit 15 based on the exclusive OR result.
   //
   acc[3] += freqs[3];
-  temp = (acc[3] >> 8) & 0x80;
+  stemp = (acc[3] >> 8) & 0x80;
   // if temp != oldTemp, trigger the LFSR to generate a new pseudorandom value
-  if (temp != oldTemp) {
+  if (stemp != oldTemp) {
     lfsrOut = (lfsr & 1) ^ ((lfsr & 2) >> 1);  // output is bit 0 XOR bit 1
     lfsr = (lfsr >> 1) | (lfsrOut << 14);      // shift and include output on bit 15
-    oldTemp = temp;
+    oldTemp = stemp;
   }
   sum += (lfsrOut ? amp[2] : 0) >> 2;
 
