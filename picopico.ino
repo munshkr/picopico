@@ -36,8 +36,8 @@ const int ErrorPin = 0;  // Error LED on PB0
 // Note buffer
 volatile unsigned int acc[] = {Silence, Silence, Silence, Silence};
 volatile unsigned int freqs[] = {0, 0, 0, 0};
-volatile byte pw[] = {0x80, 0x80};
-volatile byte amp[] = {0xff, 0xff, 0xff};
+volatile byte pw[] = {0x80, 0x80, 0, 0};
+volatile byte amp[] = {0xff, 0xff, 0xff, 0xff};
 
 // Globals persist throughout tune
 int nextTick = 0;
@@ -162,7 +162,13 @@ void loop() {
     else if (symbol == '-') sign = -1;
     else if (symbol == '+') sign = 1;
     else if (symbol == '/') readNote = 1;
-    else if (symbol == '^') { acc[chan] = Silence; freqs[chan++] = 0; readNote = 1; }
+    else if (symbol == '^') {
+      acc[chan] = Silence;
+      freqs[chan] = 0;
+      amp[chan] = 0xff;
+      chan++;
+      readNote = 1;
+    }
     else if ((capSymbol >= 'A') && (capSymbol <= 'G')) {
       boolean lowercase = (symbol & 0x20);
       int index = (((capSymbol - 'A' + 5) % 7) << 1) + 1 + sign;
@@ -177,6 +183,7 @@ void loop() {
       readNote = 1; sign = 0;
     } else digitalWrite(ErrorPin, 1);  // Illegal character
   } while (more);
+
   tunePtr--;
   nextTick = nextTick + duration;
   do ; while (ticks() < nextTick);
