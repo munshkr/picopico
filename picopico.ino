@@ -22,10 +22,14 @@
  *
 */
 
+#include <avr/sleep.h>
 #include "tune.h"
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
+#define adc_disable() (ADCSRA &= ~(1<<ADEN)) // disable ADC (before power-off)
+#define adc_enable()  (ADCSRA |=  (1<<ADEN)) // re-enable ADC
 
 int scale[] = {0, 13717, 14532, 15397, 16312, 17282, 0, 18310, 19398,
   20552, 21774, 23069, 24440, 25894, 0};
@@ -133,6 +137,9 @@ void setup() {
 
   // Set up Watchdog timer for 128 Hz (max) interrupt for ticks timer.
   WDTCR = 1<<WDIE;     // by default, 128 Hz interrupt
+
+  adc_disable(); // ADC uses ~320uA
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 }
 
 // Main loop - Parse Ample tune notation ****************
@@ -141,15 +148,21 @@ void loop() {
   char sign = 0, number = 0;
   char symbol, chan, saveIndex, saveOctave;
   boolean more = 1, readNote = 0, bra = 0, setOctave = 0;
+
   do {
     do { // Skip formatting characters
       symbol = pgm_read_byte(&Tune[tunePtr++]);
     } while ((symbol == ' ') || (symbol == '|'));
+
     char capSymbol = symbol & 0x5F;
     if (symbol == '(') { bra = 1; saveIndex = lastIndex; saveOctave = octave; }
     else if (readNote && !bra) more = 0;
     else if (symbol == ')') { bra = 0; lastIndex = saveIndex; octave = saveOctave; }
-    else if (symbol == 0) for (;;) ;          // End of string - stop
+    else if (symbol == 0) {
+      cli();
+      sleep_enable();
+      sleep_cpu();
+    }
     else if (symbol == ',') { duration = number; number = 0; sign = 0; }
     else if (symbol == ':') {
       setOctave = 1; octave = number;
