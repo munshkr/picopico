@@ -1,6 +1,6 @@
 /*
  * picopico
- * Copyright (C) 2017  Damián Silvani, David Johnson-Davies
+ * Copyright (C) 2017  Damián Silvani
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,45 @@
 
 int scale[] = {0, 13717, 14532, 15397, 16312, 17282, 0, 18310, 19398,
   20552, 21774, 23069, 24440, 25894, 0};
+
+enum Command {
+  NoteC,
+  NoteCs,
+  NoteD,
+  NoteDs,
+  NoteE,
+  NoteF,
+  NoteFs,
+  NoteG,
+  NoteGs,
+  NoteA,
+  NoteAs,
+  NoteB,
+  Rest,
+  // other commands
+  SongLoop = 0x80,
+  LoopStart,
+  LoopEnd,
+  NoteLength,
+  NoteLengthWord,
+  QuantLength,
+  QuantLengthWord,
+  Octave,
+  IncOctave,
+  DecOctave,
+  Transpose,
+  Detune,
+  Timbre,
+  Volume,
+  IncVolume,
+  DecVolume,
+  PitchSweep,
+  // select envelopes
+  VolumeEnv,
+  NoteEnv,
+  TimbreEnv,
+  PitchEnv,
+};
 
 const int Silence = 0;
 const int ErrorPin = 0;  // Error LED on PB0
