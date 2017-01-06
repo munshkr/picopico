@@ -64,16 +64,9 @@ unsigned int ticks() {
 }
 
 // External interrupt 0 wakes the MCU
-ISR(INT0_vect) {
-    GIMSK = 0;           // Disable external interrupts (only need one to wake up)
-
-    if (playing) {
-      goToSleep();
-      tunePtr = 0;
-      octave = 0;
-      lastIndex = 0;
-      duration = 4;
-      lfsrOut = 0;
+ISR(PCINT0_vect) {
+    if (PINB & (1 << PCINT2) && playing) {
+        playing = false;
     }
 }
 
@@ -149,16 +142,18 @@ void setup() {
     TCCR0A = 3<<WGM00;             // Fast PWM
     TCCR0B = 1<<WGM02 | 2<<CS00;   // 1/8 prescale
     OCR0A = 49;                    // Divide by 400
-
-    goToSleep();
 }
 
 void goToSleep(void) {
     byte adcsra, mcucr1, mcucr2, wdtcr;
 
     sleep_enable();
-    MCUCR &= ~(_BV(ISC01) | _BV(ISC00));      // INT0 on low level
-    GIMSK |= _BV(INT0);                       // Enable INT0
+
+    //MCUCR &= ~(_BV(ISC01) | _BV(ISC00));      // INT0 on low level
+    //GIMSK |= _BV(INT0);                       // Enable INT0
+    GIMSK = (1 << PCIE);                      // Enable Pin Change Interrupts
+    PCMSK = (1 << PCINT2);                    // Set Pin 7 to cause an interrupt
+
     adcsra = ADCSRA;                          // Save ADCSRA
     ADCSRA &= ~_BV(ADEN);                     // Disable ADC
     cli();                                    // Stop interrupts to ensure the BOD timed sequence executes as required
@@ -166,6 +161,7 @@ void goToSleep(void) {
     mcucr2 = mcucr1 & ~_BV(BODSE);            // If the MCU does not have BOD disable capability,
     MCUCR = mcucr1;                           //   this code has no effect
     MCUCR = mcucr2;
+
     disableTimers();                          // Disable Timers
     sei();                                    // Ensure interrupts enabled so we can wake up again
     sleep_cpu();                              // Go to sleep
@@ -197,7 +193,15 @@ void loop() {
     char symbol, chan, saveIndex, saveOctave;
     boolean more = 1, readNote = 0, bra = 0, setOctave = 0;
 
-    playing = true;
+    if (!playing) {
+        goToSleep();
+        playing = true;
+        tunePtr = 0;
+        octave = 0;
+        lastIndex = 0;
+        duration = 4;
+        lfsrOut = 0;
+    }
 
     do {
         do { // Skip formatting characters
@@ -210,13 +214,6 @@ void loop() {
         else if (symbol == ')') { bra = 0; lastIndex = saveIndex; octave = saveOctave; }
         else if (symbol == 0) {
             playing = false;
-            goToSleep();
-            playing = true;
-            tunePtr = 0;
-            octave = 0;
-            lastIndex = 0;
-            duration = 4;
-            lfsrOut = 0;
         }
         else if (symbol == ',') { duration = number; number = 0; sign = 0; }
         else if (symbol == ':') {
