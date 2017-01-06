@@ -40,34 +40,38 @@ volatile unsigned int acc[] = {Silence, Silence, Silence, Silence};
 volatile unsigned int freqs[] = {0, 0, 0, 0};
 volatile byte pw[] = {0x80, 0x80, 0, 0};
 volatile byte amp[] = {0xff, 0xff, 0xff, 0xff};
+volatile uint16_t lfsr = 1;
+volatile char lfsrOut = 0;
+volatile signed char oldTemp = 0; // FIXME change variable name
+
+// Global tick counter
+volatile unsigned int globalTicks = 0;
 
 // Globals persist throughout tune
 int nextTick = 0;
 int tunePtr = 0;
-char octave = 0, lastIndex = 0, duration = 4, lfsrOut = 0;
-uint16_t lfsr = 1;
-signed char oldTemp = 0;
+char octave = 0, lastIndex = 0, duration = 4;
+bool playing = false, wantsToStop = false;
+volatile bool justAwoke = false;
 
-// Global tick counter
-volatile unsigned int globalTicks = 0;
-volatile bool playing = false;
 
 // Ticks timer
 unsigned int ticks() {
     unsigned long t;
     uint8_t oldSREG = SREG;
     cli();
-    t = globalTicks >> 2;  // For now divide by 8, because watchdog timer
+    t = globalTicks >> 3;  // For now divide by 8, because watchdog timer
     // is too fast now for playing a song...
     SREG = oldSREG;
     return t;
 }
 
-// External interrupt 0 wakes the MCU
-ISR(PCINT0_vect) {
-    if (PINB & (1 << PCINT2) && playing) {
-        playing = false;
-    }
+
+// Pin change interrupt
+ISR(INT0_vect) {
+    GIMSK = 0;            // Disable interrupt because this routine may fire multiple times
+                          // while pin is held low (button pressed)
+    justAwoke = true;
 }
 
 // Watchdog interrupt counts ticks (every 16ms)
@@ -126,7 +130,10 @@ ISR(TIMER0_COMPA_vect) {
 void setup() {
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
-    disableTimers();
+    // Set all pins as input and enable internal pull-up resistor
+    for (int i = 0; i <= 3; i++) {
+        pinMode(i, INPUT_PULLUP);
+    }
 
     // Enable 64 MHz PLL and use as source for Timer1
     PLLCSR = 1<<PCKE | 1<<PLLE;
@@ -142,47 +149,43 @@ void setup() {
     TCCR0A = 3<<WGM00;             // Fast PWM
     TCCR0B = 1<<WGM02 | 2<<CS00;   // 1/8 prescale
     OCR0A = 49;                    // Divide by 400
+
+    GIMSK = 0;                     // Disable INT0
 }
 
 void goToSleep(void) {
     byte adcsra, mcucr1, mcucr2, wdtcr;
 
+    disableTimers();                          // Disable Timers
     sleep_enable();
-
-    //MCUCR &= ~(_BV(ISC01) | _BV(ISC00));      // INT0 on low level
-    //GIMSK |= _BV(INT0);                       // Enable INT0
-    GIMSK = (1 << PCIE);                      // Enable Pin Change Interrupts
-    PCMSK = (1 << PCINT2);                    // Set Pin 7 to cause an interrupt
-
     adcsra = ADCSRA;                          // Save ADCSRA
     ADCSRA &= ~_BV(ADEN);                     // Disable ADC
+
     cli();                                    // Stop interrupts to ensure the BOD timed sequence executes as required
+    GIMSK = _BV(INT0);                        // Enable INT0
     mcucr1 = MCUCR | _BV(BODS) | _BV(BODSE);  // Turn off the brown-out detector
     mcucr2 = mcucr1 & ~_BV(BODSE);            // If the MCU does not have BOD disable capability,
     MCUCR = mcucr1;                           //   this code has no effect
     MCUCR = mcucr2;
 
-    disableTimers();                          // Disable Timers
     sei();                                    // Ensure interrupts enabled so we can wake up again
     sleep_cpu();                              // Go to sleep
-    sleep_disable();                          // Wake up here
     // Now asleep ...
 
     // ... awake again
+    sleep_disable();                          // Wake up here
     ADCSRA = adcsra;                          // Restore ADCSRA
     enableTimers();
 }
 
 inline void disableTimers() {
     WDTCR = 0;                // Disable Watchdog timer
-    TIMSK = 0;                // Disable all timers (FIXME: check datasheet)
+    TIMSK = 0;                // Disable all timers
 }
 
 inline void enableTimers() {
-    // Enable timer compare match, disable overflow
-    TIMSK = 1<<OCIE0A;
-    // Enable Watchdog timer for 128 Hz (max) interrupt for globalTicks timer.
-    WDTCR = 1<<WDIE;
+    TIMSK = 1<<OCIE0A;        // Enable timer compare match, disable overflow
+    WDTCR = 1<<WDIE;          // Enable Watchdog timer for 128 Hz (max) interrupt
 }
 
 
@@ -193,6 +196,27 @@ void loop() {
     char symbol, chan, saveIndex, saveOctave;
     boolean more = 1, readNote = 0, bra = 0, setOctave = 0;
 
+    // Check if button is pressed for stoping song, taking care of debouncing
+    byte buttonPressed = !digitalRead(2);
+    if (buttonPressed) {
+        if (!justAwoke) {
+            // Song was playing, user is pressing button. Prepare for stop
+            wantsToStop = true;
+        }
+    } else {
+        if (justAwoke) {
+            // User left button after waking up.
+            justAwoke = false;
+        } else if (wantsToStop) {
+            // User was pressing button while song was playing,
+            // now stopped pressing.  Stop playing.
+            playing = false;
+            wantsToStop = false;
+        }
+    }
+
+    // If we are not playing, go to sleep.
+    // After waking up, reset state.
     if (!playing) {
         goToSleep();
         playing = true;
@@ -201,6 +225,7 @@ void loop() {
         lastIndex = 0;
         duration = 4;
         lfsrOut = 0;
+        return;
     }
 
     do {
@@ -214,6 +239,7 @@ void loop() {
         else if (symbol == ')') { bra = 0; lastIndex = saveIndex; octave = saveOctave; }
         else if (symbol == 0) {
             playing = false;
+            return;
         }
         else if (symbol == ',') { duration = number; number = 0; sign = 0; }
         else if (symbol == ':') {
