@@ -29,45 +29,30 @@
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
-int scale[] = {0, 13717, 14532, 15397, 16312, 17282, 0, 18310, 19398,
-    20552, 21774, 23069, 24440, 25894, 0};
+#define NUM_VOICES      4
+#define DEFAULT_OCTAVE  (0)
+#define DEFAULT_NLEN    12
+#define DEFAULT_AMP     0xff
+#define DEFAULT_PW      0x80
 
-const int Silence = 0;
-const int ErrorPin = 0;  // Error LED on PB0
 
 // Note buffer
-volatile unsigned int acc[] = {Silence, Silence, Silence, Silence};
-volatile unsigned int freqs[] = {0, 0, 0, 0};
-volatile byte pw[] = {0x80, 0x80, 0, 0};
-volatile byte amp[] = {0xff, 0xff, 0xff, 0xff};
 volatile uint16_t lfsr = 1;
 volatile char lfsrOut = 0;
 volatile signed char oldTemp = 0; // FIXME change variable name
 
 // Global tick counter
 volatile unsigned int globalTicks = 0;
+volatile bool nextTick = false;
 
-// Globals persist throughout tune
-int nextTick = 0;
-int tunePtr = 0;
-char octave = 0, lastIndex = 0, duration = 4;
+Voice voices[NUM_VOICES] = {};
+byte playingVoices = 0;
+
 bool playing = false, wantsToStop = false;
 volatile bool justAwoke = false;
 
 
-// Ticks timer
-unsigned int ticks() {
-    unsigned long t;
-    uint8_t oldSREG = SREG;
-    cli();
-    t = globalTicks >> 3;  // For now divide by 8, because watchdog timer
-    // is too fast now for playing a song...
-    SREG = oldSREG;
-    return t;
-}
-
-
-// Pin change interrupt
+// External interrupt 0
 ISR(INT0_vect) {
     GIMSK = 0;            // Disable interrupt because this routine may fire multiple times
                           // while pin is held low (button pressed)
@@ -77,31 +62,33 @@ ISR(INT0_vect) {
 // Watchdog interrupt counts ticks (every 16ms)
 ISR(WDT_vect) {
     WDTCR |= 1<<WDIE;
-    globalTicks++;
+    nextTick = true;
 
     // test: linear amplitude decay
-    for (int c = 0; c < 3; c++) {
-        amp[c] = MAX(amp[c] - 6, 0);
+    for (int c = 0; c < 2; c++) {
+        voices[c].amp = MAX(voices[c].amp - 6, 0);
     }
 }
 
-// Generate triangle waves on 4 channels
 ISR(TIMER0_COMPA_vect) {
     unsigned char temp;
-    signed char stemp, mask, sum = 0;
+    signed char stemp, mask, out = 0;
+    Voice* v;
 
     // Voice 1 and 2: Pulses
     for (int c = 0; c < 2; c++) {
-        acc[c] += freqs[c];
-        temp = (acc[c] >> 8) & pw[c];
-        sum += (temp ? amp[c] : 0) >> 2;
+        v = &voices[c];
+        v->acc += v->freq;
+        temp = (v->acc >> 8) & v->pw;
+        if (v->gate) out += (temp ? v->amp : 0) >> 2;
     }
 
     // Voice 3: Triangle
-    acc[2] += freqs[2];
-    stemp = acc[2] >> 8;
+    v = &voices[2];
+    v->acc += v->freq;
+    stemp = v->acc >> 8;
     mask = stemp >> 7;
-    sum += (stemp ^ mask) >> 1;
+    if (v->gate) out += (stemp ^ mask) >> 1;
 
     // Voice 4: Noise
     //
@@ -112,17 +99,18 @@ ISR(TIMER0_COMPA_vect) {
     // The LFSR performs an Exclusive OR between bit 0 and bit 1, then shifts to the
     // right, and sets/resets bit 15 based on the exclusive OR result.
     //
-    acc[3] += freqs[3];
-    stemp = (acc[3] >> 8) & 0x80;
+    v = &voices[3];
+    v->acc += v->freq;
+    stemp = (v->acc >> 8) & 0x80;
     // if temp != oldTemp, trigger the LFSR to generate a new pseudorandom value
     if (stemp != oldTemp) {
         lfsrOut = (lfsr & 1) ^ ((lfsr & 2) >> 1);  // output is bit 0 XOR bit 1
         lfsr = (lfsr >> 1) | (lfsrOut << 14);      // shift and include output on bit 15
         oldTemp = stemp;
     }
-    sum += (lfsrOut ? amp[2] : 0) >> 2;
+    if (v->gate) out += (lfsrOut ? v->amp : 0) >> 2;
 
-    OCR1B = sum;
+    OCR1B = out;
 }
 
 // Setup **********************************************
@@ -156,7 +144,9 @@ void setup() {
 void goToSleep(void) {
     byte adcsra, mcucr1, mcucr2, wdtcr;
 
-    disableTimers();                          // Disable Timers
+    WDTCR = 0;                                // Disable Watchdog timer
+    TIMSK = 0;                                // Disable all timers
+
     sleep_enable();
     adcsra = ADCSRA;                          // Save ADCSRA
     ADCSRA &= ~_BV(ADEN);                     // Disable ADC
@@ -175,27 +165,103 @@ void goToSleep(void) {
     // ... awake again
     sleep_disable();                          // Wake up here
     ADCSRA = adcsra;                          // Restore ADCSRA
-    enableTimers();
-}
 
-inline void disableTimers() {
-    WDTCR = 0;                // Disable Watchdog timer
-    TIMSK = 0;                // Disable all timers
-}
-
-inline void enableTimers() {
-    TIMSK = 1<<OCIE0A;        // Enable timer compare match, disable overflow
-    WDTCR = 1<<WDIE;          // Enable Watchdog timer for 128 Hz (max) interrupt
+    PLLCSR = 1<<PCKE | 1<<PLLE;               // Re-enable PLL (for some reason, this is needed after sleeping...)
+    TIMSK = 1<<OCIE0A;                        // Enable timer compare match, disable overflow
+    WDTCR = 1<<WDIE;                          // Enable Watchdog timer for 128Hz interrupt
 }
 
 
-// Main loop - Parse Ample tune notation ****************
+// Main loop
+
+bool playVoice(Voice& voice) {
+    if (voice.finished) return false;
+
+    if (voice.playing) {
+        if (voice.qlen_c == 1) voice.gate = false;
+        if (voice.nlen_c == 1) voice.playing = false;
+
+        voice.qlen_c--;
+        voice.nlen_c--;
+
+        if (voice.nlen_c >= 0) {
+            // TODO
+            //playSequences(c);
+            return true;
+        }
+    }
+
+    while (true) {
+        const byte cmd = fetchNextByte(voice);
+
+        if (!cmd) {
+            voice.gate = false;
+            //voice.playing = false;
+            voice.finished = true;
+            break;
+        } else if (cmd <= 0x80) {
+            playNote(voice, cmd);
+            break;
+        } else {
+            executeCommand(voice, cmd);
+        }
+    }
+
+    return true;
+}
+
+byte fetchNextByte(Voice& voice) {
+    return pgm_read_byte(voice.ptr++);
+}
+
+inline void playNote(Voice& voice, byte note) {
+    voice.playing = true;
+
+    // If note is not a rest, set frequency based on note and current octave
+    if (note != REST) {
+        voice.freq = scale[note & 0xf] >> (4 - voice.octave);
+    }
+
+    // Set note length counter
+    if (note & WITH_LEN) {
+        // If note command has a length counter parameter, use it (word or byte)
+        if (note & WORD) {
+            voice.nlen_c = fetchNextByte(voice) | (fetchNextByte(voice) << 8);
+        } else {
+            voice.nlen_c = fetchNextByte(voice);
+        }
+    } else {
+        // Otherwise, use default note length counter
+        voice.nlen_c = voice.nlen;
+    }
+
+    // Set quantization length counter
+    if (note & WITH_Q) {
+        if (note & WORD) {
+            voice.qlen_c = fetchNextByte(voice) | (fetchNextByte(voice) << 8);
+        } else {
+            voice.qlen_c = fetchNextByte(voice);
+        }
+    } else {
+        voice.qlen_c = voice.qlen;
+    }
+
+    // Set amplitude
+    voice.amp = DEFAULT_AMP;
+
+    // Enable gate if note is not a rest
+    voice.gate = (note != REST);
+
+    // TODO
+    //resetSequences(voice);
+}
+
+inline void executeCommand(Voice& voice, const byte cmd) {
+    // TODO
+    return;
+}
 
 void loop() {
-    char sign = 0, number = 0;
-    char symbol, chan, saveIndex, saveOctave;
-    boolean more = 1, readNote = 0, bra = 0, setOctave = 0;
-
     // Check if button is pressed for stoping song, taking care of debouncing
     byte buttonPressed = !digitalRead(2);
     if (buttonPressed) {
@@ -219,63 +285,29 @@ void loop() {
     // After waking up, reset state.
     if (!playing) {
         goToSleep();
+
         playing = true;
-        tunePtr = 0;
-        octave = 0;
-        lastIndex = 0;
-        duration = 4;
+        for (int i = 0; i < NUM_VOICES; i++) {
+            Voice* v = &voices[i];
+            v->ptr = SongData[i];
+            v->playing = false;
+            v->finished = false;
+            v->nlen = DEFAULT_NLEN;
+            v->qlen = v->nlen;
+            v->octave = DEFAULT_OCTAVE;
+            v->gate = false;
+            v->pw = DEFAULT_PW;
+        }
         lfsrOut = 0;
         return;
     }
 
-    do {
-        do { // Skip formatting characters
-            symbol = pgm_read_byte(&Tune[tunePtr++]);
-        } while ((symbol == ' ') || (symbol == '|'));
-
-        char capSymbol = symbol & 0x5F;
-        if (symbol == '(') { bra = 1; saveIndex = lastIndex; saveOctave = octave; }
-        else if (readNote && !bra) more = 0;
-        else if (symbol == ')') { bra = 0; lastIndex = saveIndex; octave = saveOctave; }
-        else if (symbol == 0) {
-            playing = false;
-            return;
+    if (nextTick) {
+        nextTick = false;
+        bool anyVoicePlaying = false;
+        for (int i = 0; i < NUM_VOICES; i++) {
+            anyVoicePlaying |= playVoice(voices[i]);
         }
-        else if (symbol == ',') { duration = number; number = 0; sign = 0; }
-        else if (symbol == ':') {
-            setOctave = 1; octave = number;
-            if (sign == -1) octave = -octave;
-            number = 0; sign = 0;
-        }
-        else if ((symbol >= '0') && (symbol <= '9')) number = number*10 + symbol - '0';
-        else if (symbol == '<') octave--;
-        else if (symbol == '>') octave++;
-        else if (symbol == '-') sign = -1;
-        else if (symbol == '+') sign = 1;
-        else if (symbol == '/') readNote = 1;
-        else if (symbol == '^') {
-            acc[chan] = Silence;
-            freqs[chan] = 0;
-            amp[chan] = 0xff;
-            chan++;
-            readNote = 1;
-        }
-        else if ((capSymbol >= 'A') && (capSymbol <= 'G')) {
-            boolean lowercase = (symbol & 0x20);
-            int index = (((capSymbol - 'A' + 5) % 7) << 1) + 1 + sign;
-            if (!setOctave) {
-                if (lastIndex && (index < lastIndex) && !lowercase) octave++;
-                if (lastIndex && (index > lastIndex) && lowercase) octave--;
-            } else setOctave = 0;
-            freqs[chan] = scale[index] >> (4 - octave);
-            amp[chan] = 0xff;
-            chan++;
-            lastIndex = index;
-            readNote = 1; sign = 0;
-        } else digitalWrite(ErrorPin, 1);  // Illegal character
-    } while (more);
-
-    tunePtr--;
-    nextTick = nextTick + duration;
-    do ; while (ticks() < nextTick);
+        if (!anyVoicePlaying) playing = false;
+    }
 }
