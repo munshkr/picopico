@@ -27,7 +27,7 @@ enum NoteFlag {
 };
 
 // Other commands (start at 0x80)
-const byte SONG_LOOP      = 0x80;
+const byte TRACK_LOOP     = 0x80;
 const byte LOOP_START     = 0x81;
 const byte LOOP_END       = 0x82;
 const byte NOTE_LEN       = 0x83;
@@ -56,6 +56,9 @@ const byte PITCH_ENV  = 0x94;
 //   [int((2**16 / 20000.0) * f) for f in freqs]
 const uint16_t scale[] = {13716, 14532, 15397, 16311, 17281, 18310, 19398, 20552, 21774, 23068, 24441, 25893};
 
+// Volume amplitude lookup table (16 entries)
+const uint8_t amp[] = {0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240};
+
 struct Voice {
     // Player-related registers
     byte* ptr;
@@ -65,7 +68,10 @@ struct Voice {
     uint16_t qlen_c;
     bool playing;
     bool finished;
-    int8_t octave;
+    uint8_t octave;
+    uint8_t volume;
+
+    byte* loop_ptr;     // Track loop (set by TRACK_LOOP command)
 
     // Internal registers
     volatile bool gate;

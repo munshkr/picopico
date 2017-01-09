@@ -30,9 +30,9 @@
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 #define NUM_VOICES      4
-#define DEFAULT_OCTAVE  (0)
+#define DEFAULT_OCTAVE  4
 #define DEFAULT_NLEN    12
-#define DEFAULT_AMP     0xff
+#define DEFAULT_VOL     15
 #define DEFAULT_PW      0x80
 
 
@@ -64,10 +64,12 @@ ISR(WDT_vect) {
     WDTCR |= 1<<WDIE;
     nextTick = true;
 
+    /*
     // test: linear amplitude decay
     for (int c = 0; c < 2; c++) {
         voices[c].amp = MAX(voices[c].amp - 6, 0);
     }
+    */
 }
 
 ISR(TIMER0_COMPA_vect) {
@@ -196,7 +198,6 @@ bool playVoice(Voice& voice) {
 
         if (!cmd) {
             voice.gate = false;
-            //voice.playing = false;
             voice.finished = true;
             break;
         } else if (cmd <= 0x80) {
@@ -219,7 +220,7 @@ inline void playNote(Voice& voice, byte note) {
 
     // If note is not a rest, set frequency based on note and current octave
     if (note != REST) {
-        voice.freq = scale[note & 0xf] >> (4 - voice.octave);
+        voice.freq = scale[(note & 0xf) - 1] >> (8 - voice.octave);
     }
 
     // Set note length counter
@@ -247,7 +248,7 @@ inline void playNote(Voice& voice, byte note) {
     }
 
     // Set amplitude
-    voice.amp = DEFAULT_AMP;
+    voice.amp = amp[voice.volume];
 
     // Enable gate if note is not a rest
     voice.gate = (note != REST);
@@ -257,8 +258,81 @@ inline void playNote(Voice& voice, byte note) {
 }
 
 inline void executeCommand(Voice& voice, const byte cmd) {
-    // TODO
-    return;
+    switch (cmd) {
+        case TRACK_LOOP: {
+            break;
+        }
+        case LOOP_START: {
+            break;
+        }
+        case LOOP_END: {
+            break;
+        }
+        case NOTE_LEN: {
+            break;
+        }
+        case NOTE_LEN_WORD: {
+            break;
+        }
+        case QUANT_LEN: {
+            break;
+        }
+        case QUANT_LEN_WORD: {
+            break;
+        }
+        case OCTAVE: {
+            const byte param = fetchNextByte(voice);
+            voice.octave = param;
+            break;
+        }
+        case INC_OCTAVE: {
+            if (voice.octave < 8) voice.octave++;
+            break;
+        }
+        case DEC_OCTAVE: {
+            if (voice.octave > 0) voice.octave--;
+            break;
+        }
+        case TRANSPOSE: {
+            break;
+        }
+        case DETUNE: {
+            break;
+        }
+        case TIMBRE: {
+            break;
+        }
+        case VOLUME: {
+            const byte param = fetchNextByte(voice);
+            voice.volume = param;
+            break;
+        }
+        case INC_VOLUME: {
+            if (voice.volume < 16) voice.volume++;
+            break;
+        }
+        case DEC_VOLUME: {
+            if (voice.volume > 0) voice.volume--;
+            break;
+        }
+        case PITCH_SWEEP: {
+            break;
+        }
+
+        // Select Envelope commands
+        case VOLUME_ENV: {
+            break;
+        }
+        case NOTE_ENV: {
+            break;
+        }
+        case TIMBRE_ENV: {
+            break;
+        }
+        case PITCH_ENV: {
+            break;
+        }
+    }
 }
 
 void loop() {
@@ -294,6 +368,7 @@ void loop() {
             v->finished = false;
             v->nlen = DEFAULT_NLEN;
             v->qlen = v->nlen;
+            v->volume = DEFAULT_VOL;
             v->octave = DEFAULT_OCTAVE;
             v->gate = false;
             v->pw = DEFAULT_PW;
