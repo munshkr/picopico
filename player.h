@@ -1,6 +1,8 @@
 #ifndef __PLAYER_H__
 #define __PLAYER_H__
 
+#define MAX_LOOPS 4
+
 // End of sequence
 const byte END = 0;
 
@@ -61,23 +63,26 @@ const uint8_t amp[] = {0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 
 
 struct Voice {
     // Player-related registers
-    byte* ptr;                // Voice track pointer
-    uint16_t nlen;            // Note length (in ticks)
-    uint16_t qlen;            // Quantization length (in ticks)
-    uint16_t nlen_c;          // Note length counter (in ticks)
-    uint16_t qlen_c;          // Quantization length counter (in ticks)
-    bool playing;             // Whether voice is currently playing a note command
-    bool finished;            // Whether voice has finished (EOF)
-    uint8_t octave;           // Octave (0-7)
-    uint8_t volume;           // Volume (0-15)
-    byte* loop_ptr;           // Track loop (set by TRACK_LOOP command)
+    byte*     ptr;                    // Voice track pointer
+    uint16_t  nlen;                   // Note length (in ticks)
+    uint16_t  qlen;                   // Quantization length (in ticks)
+    uint16_t  nlen_c;                 // Note length counter (in ticks)
+    uint16_t  qlen_c;                 // Quantization length counter (in ticks)
+    bool      playing;                // Whether voice is currently playing a note command
+    bool      finished;               // Whether voice has finished (EOF)
+    uint8_t   octave;                 // Octave (0-7)
+    uint8_t   volume;                 // Volume (0-15)
+    byte*     track_loop_ptr;         // Track loop (set by TRACK_LOOP command)
+    uint8_t   loops_idx;              // Current loop index
+    byte*     loops_ptr[MAX_LOOPS];   // Loop pointers
+    uint8_t   loops_c[MAX_LOOPS];     // Loop repetion counters
 
     // Internal registers for sound generation
-    volatile bool gate;
-    volatile int16_t acc;
-    volatile uint16_t freq;
-    volatile uint8_t amp;
-    volatile int8_t pw;
+    volatile bool     gate;
+    volatile int16_t  acc;            // Phase accumulator
+    volatile uint16_t freq;           // Frequency delta
+    volatile uint8_t  amp;            // Amplitude
+    volatile int8_t   pw;             // Pulse width
 };
 
 #endif /* ifndef __PLAYER_H__ */

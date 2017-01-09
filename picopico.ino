@@ -197,8 +197,8 @@ bool playVoice(Voice& voice) {
         const byte cmd = fetchNextByte(voice);
 
         if (!cmd) {
-            if (voice.loop_ptr) {
-                voice.ptr = voice.loop_ptr;
+            if (voice.track_loop_ptr) {
+                voice.ptr = voice.track_loop_ptr;
             } else {
                 voice.gate = false;
                 voice.finished = true;
@@ -264,12 +264,24 @@ inline void playNote(Voice& voice, byte note) {
 inline void executeCommand(Voice& voice, const byte cmd) {
     switch (cmd) {
         case TRACK_LOOP:
-            voice.loop_ptr = voice.ptr;
+            voice.track_loop_ptr = voice.ptr;
             break;
         case LOOP_START: {
+            const byte times = fetchNextByte(voice);
+            const byte i = voice.loops_idx;
+            voice.loops_ptr[i] = voice.ptr;
+            voice.loops_c[i] = times;
+            voice.loops_idx++;
             break;
         }
         case LOOP_END: {
+            const byte i = voice.loops_idx;
+            voice.loops_c[i]--;
+            if (voice.loops_c[i] == 0) {
+                voice.loops_idx--;
+            } else {
+                voice.ptr = voice.loops_ptr[i];
+            }
             break;
         }
         case NOTE_LEN:
@@ -314,7 +326,6 @@ inline void executeCommand(Voice& voice, const byte cmd) {
         case PITCH_SWEEP: {
             break;
         }
-
         // Select Envelope commands
         case VOLUME_ENV: {
             break;
@@ -364,8 +375,10 @@ void loop() {
             v->finished = false;
             v->nlen = DEFAULT_NLEN;
             v->qlen = v->nlen;
-            v->volume = DEFAULT_VOL;
             v->octave = DEFAULT_OCTAVE;
+            v->volume = DEFAULT_VOL;
+            v->track_loop_ptr = NULL;
+            v->loops_idx = 0;
             v->gate = false;
             v->pw = DEFAULT_PW;
         }
