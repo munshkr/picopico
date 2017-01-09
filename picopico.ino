@@ -263,10 +263,9 @@ inline void playNote(Voice& voice, byte note) {
 
 inline void executeCommand(Voice& voice, const byte cmd) {
     switch (cmd) {
-        case TRACK_LOOP: {
+        case TRACK_LOOP:
             voice.loop_ptr = voice.ptr;
             break;
-        }
         case LOOP_START: {
             break;
         }
@@ -285,19 +284,15 @@ inline void executeCommand(Voice& voice, const byte cmd) {
         case QUANT_LEN_WORD:
             voice.qlen = fetchNextByte(voice) | (fetchNextByte(voice) << 8);
             break;
-        case OCTAVE: {
-            const byte param = fetchNextByte(voice);
-            voice.octave = param;
+        case OCTAVE:
+            voice.octave = fetchNextByte(voice);;
             break;
-        }
-        case INC_OCTAVE: {
+        case INC_OCTAVE:
             if (voice.octave < 8) voice.octave++;
             break;
-        }
-        case DEC_OCTAVE: {
+        case DEC_OCTAVE:
             if (voice.octave > 0) voice.octave--;
             break;
-        }
         case TRANSPOSE: {
             break;
         }
@@ -307,19 +302,15 @@ inline void executeCommand(Voice& voice, const byte cmd) {
         case TIMBRE: {
             break;
         }
-        case VOLUME: {
-            const byte param = fetchNextByte(voice);
-            voice.volume = param;
+        case VOLUME:
+            voice.volume = fetchNextByte(voice);
             break;
-        }
-        case INC_VOLUME: {
+        case INC_VOLUME:
             if (voice.volume < 16) voice.volume++;
             break;
-        }
-        case DEC_VOLUME: {
+        case DEC_VOLUME:
             if (voice.volume > 0) voice.volume--;
             break;
-        }
         case PITCH_SWEEP: {
             break;
         }
