@@ -273,18 +273,18 @@ inline void executeCommand(Voice& voice, const byte cmd) {
         case LOOP_END: {
             break;
         }
-        case NOTE_LEN: {
+        case NOTE_LEN:
+            voice.nlen = fetchNextByte(voice);
             break;
-        }
-        case NOTE_LEN_WORD: {
+        case NOTE_LEN_WORD:
+            voice.nlen = fetchNextByte(voice) | (fetchNextByte(voice) << 8);
             break;
-        }
-        case QUANT_LEN: {
+        case QUANT_LEN:
+            voice.qlen = fetchNextByte(voice);
             break;
-        }
-        case QUANT_LEN_WORD: {
+        case QUANT_LEN_WORD:
+            voice.qlen = fetchNextByte(voice) | (fetchNextByte(voice) << 8);
             break;
-        }
         case OCTAVE: {
             const byte param = fetchNextByte(voice);
             voice.octave = param;
