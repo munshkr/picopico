@@ -197,10 +197,14 @@ bool playVoice(Voice& voice) {
         const byte cmd = fetchNextByte(voice);
 
         if (!cmd) {
-            voice.gate = false;
-            voice.finished = true;
-            break;
-        } else if (cmd <= 0x80) {
+            if (voice.loop_ptr) {
+                voice.ptr = voice.loop_ptr;
+            } else {
+                voice.gate = false;
+                voice.finished = true;
+                break;
+            }
+        } else if (cmd < 0x80) {
             playNote(voice, cmd);
             break;
         } else {
@@ -260,6 +264,7 @@ inline void playNote(Voice& voice, byte note) {
 inline void executeCommand(Voice& voice, const byte cmd) {
     switch (cmd) {
         case TRACK_LOOP: {
+            voice.loop_ptr = voice.ptr;
             break;
         }
         case LOOP_START: {
