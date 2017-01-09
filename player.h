@@ -61,19 +61,18 @@ const uint8_t amp[] = {0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 
 
 struct Voice {
     // Player-related registers
-    byte* ptr;
-    uint16_t nlen;
-    uint16_t qlen;
-    uint16_t nlen_c;
-    uint16_t qlen_c;
-    bool playing;
-    bool finished;
-    uint8_t octave;
-    uint8_t volume;
+    byte* ptr;                // Voice track pointer
+    uint16_t nlen;            // Note length (in ticks)
+    uint16_t qlen;            // Quantization length (in ticks)
+    uint16_t nlen_c;          // Note length counter (in ticks)
+    uint16_t qlen_c;          // Quantization length counter (in ticks)
+    bool playing;             // Whether voice is currently playing a note command
+    bool finished;            // Whether voice has finished (EOF)
+    uint8_t octave;           // Octave (0-7)
+    uint8_t volume;           // Volume (0-15)
+    byte* loop_ptr;           // Track loop (set by TRACK_LOOP command)
 
-    byte* loop_ptr;     // Track loop (set by TRACK_LOOP command)
-
-    // Internal registers
+    // Internal registers for sound generation
     volatile bool gate;
     volatile int16_t acc;
     volatile uint16_t freq;
