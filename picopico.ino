@@ -215,7 +215,10 @@ inline void playNote(Voice& voice, byte note) {
 
     // If note is not a rest, set frequency based on note and current octave
     if (note != REST) {
-        voice.freq = scale[(note & 0xf) - 1] >> (8 - voice.octave);
+        voice.note = (note & 0xf) - 1;
+        voice.freq = scale[voice.note] >> (8 - voice.octave);
+        voice.amp = amp[voice.volume];
+        voice.gate = true;
     }
 
     // Set note length counter
@@ -242,12 +245,6 @@ inline void playNote(Voice& voice, byte note) {
         voice.qlen_c = voice.qlen;
     }
 
-    // Set amplitude
-    voice.amp = amp[voice.volume];
-
-    // Enable gate if note is not a rest
-    voice.gate = (note != REST);
-
     // Reset sequence pointers
     resetSequences(voice);
 }
@@ -260,13 +257,21 @@ inline void playSequences(Voice& voice) {
             voice.volume_env_ptr++;
         }
     }
+
+    if (voice.note_env_ptr) {
+        const byte value = pgm_read_byte(voice.note_env_ptr);;
+        if (value) {
+            voice.freq = scale[voice.note] >> (8 - voice.octave);
+            voice.note_env_ptr++;
+        }
+    }
 }
 
 inline void resetSequences(Voice& voice) {
     if (voice.volume_env) voice.volume_env_ptr = Seqs[voice.volume_env - 1];
-    //if (voice.note_env) voice.volume_env_ptr = Seqs[voice.note_env - 1];
-    //if (voice.timbre_env) voice.volume_env_ptr = Seqs[voice.timbre_env - 1];
-    //if (voice.pitch_env) voice.volume_env_ptr = Seqs[voice.pitch_env - 1];
+    if (voice.note_env) voice.note_env_ptr = Seqs[voice.note_env - 1];
+    //if (voice.timbre_env) voice.timbre_env_ptr = Seqs[voice.timbre_env - 1];
+    //if (voice.pitch_env) voice.pitch_env_ptr = Seqs[voice.pitch_env - 1];
 }
 
 inline void executeCommand(Voice& voice, const byte cmd) {

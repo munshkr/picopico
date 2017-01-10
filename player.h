@@ -70,7 +70,9 @@ struct Voice {
     uint16_t  qlen_c;                 // Quantization length counter (in ticks)
     bool      playing;                // Whether voice is currently playing a note command
     bool      finished;               // Whether voice has finished (EOF)
+    uint8_t   note;                   // Note (0-11)
     uint8_t   octave;                 // Octave (0-7)
+    //int       transpose;              // Note transpose (-127 - 128)
     uint8_t   volume;                 // Volume (0-15)
     byte*     track_loop_ptr;         // Track loop (set by TRACK_LOOP command)
     uint8_t   loops_idx;              // Current loop index
