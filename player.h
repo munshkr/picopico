@@ -77,6 +77,17 @@ struct Voice {
     byte*     loops_ptr[MAX_LOOPS];   // Loop pointers
     uint8_t   loops_c[MAX_LOOPS];     // Loop repetion counters
 
+    // For each envelope, there's an index to the envelope itself,
+    // and the pointer within the envelope sequence.
+    byte      volume_env;             // Volume envelope
+    byte*     volume_env_ptr;
+    byte      note_env;               // Note envelope
+    byte*     note_env_ptr;
+    byte      timbre_env;             // Timbre envelope
+    byte*     timbre_env_ptr;
+    byte      pitch_env;              // Pitch envelope
+    byte*     pitch_env_ptr;
+
     // Internal registers for sound generation
     volatile bool     gate;
     volatile int16_t  acc;            // Phase accumulator

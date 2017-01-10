@@ -63,13 +63,6 @@ ISR(INT0_vect) {
 ISR(WDT_vect) {
     WDTCR |= 1<<WDIE;
     nextTick = true;
-
-    /*
-    // test: linear amplitude decay
-    for (int c = 0; c < 2; c++) {
-        voices[c].amp = MAX(voices[c].amp - 6, 0);
-    }
-    */
 }
 
 ISR(TIMER0_COMPA_vect) {
@@ -187,8 +180,7 @@ bool playVoice(Voice& voice) {
         voice.nlen_c--;
 
         if (voice.nlen_c >= 0) {
-            // TODO
-            //playSequences(c);
+            playSequences(voice);
             return true;
         }
     }
@@ -257,8 +249,25 @@ inline void playNote(Voice& voice, byte note) {
     // Enable gate if note is not a rest
     voice.gate = (note != REST);
 
-    // TODO
-    //resetSequences(voice);
+    // Reset sequence pointers
+    resetSequences(voice);
+}
+
+inline void playSequences(Voice& voice) {
+    if (voice.volume_env_ptr) {
+        const byte value = pgm_read_byte(voice.volume_env_ptr);;
+        if (value) {
+            voice.amp = amp[MAX(0, ((value - 1) + (voice.volume - 15)))];
+            voice.volume_env_ptr++;
+        }
+    }
+}
+
+inline void resetSequences(Voice& voice) {
+    if (voice.volume_env) voice.volume_env_ptr = Seqs[voice.volume_env - 1];
+    //if (voice.note_env) voice.volume_env_ptr = Seqs[voice.note_env - 1];
+    //if (voice.timbre_env) voice.volume_env_ptr = Seqs[voice.timbre_env - 1];
+    //if (voice.pitch_env) voice.volume_env_ptr = Seqs[voice.pitch_env - 1];
 }
 
 inline void executeCommand(Voice& voice, const byte cmd) {
@@ -326,18 +335,18 @@ inline void executeCommand(Voice& voice, const byte cmd) {
             break;
         }
         // Select Envelope commands
-        case VOLUME_ENV: {
+        case VOLUME_ENV:
+            voice.volume_env = fetchNextByte(voice);
             break;
-        }
-        case NOTE_ENV: {
+        case NOTE_ENV:
+            voice.note_env = fetchNextByte(voice);
             break;
-        }
-        case TIMBRE_ENV: {
+        case TIMBRE_ENV:
+            voice.timbre_env = fetchNextByte(voice);
             break;
-        }
-        case PITCH_ENV: {
+        case PITCH_ENV:
+            voice.pitch_env = fetchNextByte(voice);
             break;
-        }
     }
 }
 
