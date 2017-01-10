@@ -5,6 +5,8 @@ tries to mimic a classical sound chip used in video game consoles from the 80s.
 
 Pretty much inspired by [1-bit symphony](http://www.1bitsymphony.com/) by Tristan Perich and [lft/kryo's project](http://www.linusakesson.net/hardware/chiptune.php).
 
+![](http://i.imgur.com/SciTb4v.jpg)
+
 ## Hardware
 
 * AVR ATtiny85
