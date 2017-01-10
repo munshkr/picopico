@@ -173,16 +173,15 @@ bool playVoice(Voice& voice) {
     if (voice.finished) return false;
 
     if (voice.playing) {
-        if (voice.qlen_c == 1) voice.gate = false;
-        if (voice.nlen_c == 1) voice.playing = false;
-
+        if (voice.qlen_c == 0) voice.gate = false;
+        if (voice.nlen_c == 0) voice.playing = false;
         voice.qlen_c--;
         voice.nlen_c--;
+    }
 
-        if (voice.nlen_c >= 0) {
-            playSequences(voice);
-            return true;
-        }
+    if (voice.playing) {
+        playSequences(voice);
+        return true;
     }
 
     while (true) {
