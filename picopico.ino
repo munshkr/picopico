@@ -268,10 +268,9 @@ inline void executeCommand(Voice& voice, const byte cmd) {
             break;
         case LOOP_START: {
             const byte times = fetchNextByte(voice);
-            const byte i = voice.loops_idx;
+            const byte i = ++voice.loops_idx;
             voice.loops_ptr[i] = voice.ptr;
             voice.loops_c[i] = times;
-            voice.loops_idx++;
             break;
         }
         case LOOP_END: {
@@ -378,7 +377,7 @@ void loop() {
             v->octave = DEFAULT_OCTAVE;
             v->volume = DEFAULT_VOL;
             v->track_loop_ptr = NULL;
-            v->loops_idx = 0;
+            v->loops_idx = -1;
             v->gate = false;
             v->pw = DEFAULT_PW;
         }
