@@ -53,6 +53,11 @@ const byte NOTE_ENV   = 0x92;
 const byte TIMBRE_ENV = 0x93;
 const byte PITCH_ENV  = 0x94;
 
+// Sequence commands
+const byte SEQ_END  = 0x00;
+const byte SEQ_LOOP = 0xfe;
+const byte SEQ_REL  = 0xff;
+
 // Note frequencies for 8th octave (highest):
 //   freqs = [4186, 4435, 4699, 4978, 5274, 5588, 5920, 6272, 6645, 7040, 7459, 7902]
 //   [int((2**16 / 20000.0) * f) for f in freqs]
@@ -61,9 +66,17 @@ const uint16_t scale[] = {13716, 14532, 15397, 16311, 17281, 18310, 19398, 20552
 // Volume amplitude lookup table (16 entries)
 const uint8_t amp[] = {0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240};
 
+struct Envelope {
+    byte      id;                     // Index into Seqs array (1-index, 0 = null)
+    byte      i;                      // Current index
+    byte      loop_i;                 // Loop Marker index (1-index, 0 = null)
+    byte      rel_i;                  // Release Marker index (1-index, 0 = null)
+};
+
 struct Voice {
     // Player-related registers
     byte*     ptr;                    // Voice track pointer
+    bool      gate;
     uint16_t  nlen;                   // Note length (in ticks)
     uint16_t  qlen;                   // Quantization length (in ticks)
     uint16_t  nlen_c;                 // Note length counter (in ticks)
@@ -81,17 +94,12 @@ struct Voice {
 
     // For each envelope, there's an index to the envelope itself,
     // and the pointer within the envelope sequence.
-    byte      volume_env;             // Volume envelope
-    byte*     volume_env_ptr;
-    byte      note_env;               // Note envelope
-    byte*     note_env_ptr;
-    byte      timbre_env;             // Timbre envelope
-    byte*     timbre_env_ptr;
-    byte      pitch_env;              // Pitch envelope
-    byte*     pitch_env_ptr;
+    Envelope  volume_env;
+    Envelope  note_env;
+    Envelope  timbre_env;
+    Envelope  pitch_env;
 
     // Internal registers for sound generation
-    volatile bool     gate;
     volatile int16_t  acc;            // Phase accumulator
     volatile uint16_t freq;           // Frequency delta
     volatile uint8_t  amp;            // Amplitude
