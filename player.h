@@ -68,7 +68,7 @@ const uint8_t amp[] = {0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 
 
 struct Envelope {
     byte      id;                     // Index into Seqs array (1-index, 0 = null)
-    byte      i;                      // Current index
+    byte      i;                      // Current index (1-index)
     byte      loop_i;                 // Loop Marker index (1-index, 0 = null)
     byte      rel_i;                  // Release Marker index (1-index, 0 = null)
 };

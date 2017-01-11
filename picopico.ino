@@ -42,7 +42,7 @@ volatile char lfsrOut = 0;
 volatile signed char oldTemp = 0; // FIXME change variable name
 
 // Global tick counter
-//volatile unsigned int ticks = 0;
+volatile unsigned int ticks = 0;
 volatile bool nextTick = false;
 
 Voice voices[NUM_VOICES] = {};
@@ -62,7 +62,7 @@ ISR(INT0_vect) {
 // Watchdog interrupt counts ticks (every 16ms)
 ISR(WDT_vect) {
     WDTCR |= 1<<WDIE;
-    //ticks++;
+    ticks++;
     nextTick = true;
 }
 
@@ -84,7 +84,7 @@ ISR(TIMER0_COMPA_vect) {
     v->acc += v->freq;
     stemp = v->acc >> 8;
     mask = stemp >> 7;
-    if (v->amp) out += (stemp ^ mask) >> 1;
+    if (v->amp != 0) out += (stemp ^ mask) >> 1;
 
     // Voice 4: Noise
     //
@@ -254,7 +254,7 @@ inline void playNote(Voice& voice, byte note) {
 }
 
 inline const byte fetchSeqValue(const Envelope& env) {
-    return pgm_read_byte(Seqs[env.id-1] + env.i);
+    return pgm_read_byte(Seqs[env.id - 1] + env.i - 1);
 }
 
 const byte playSequence(Voice& voice, Envelope& env) {
@@ -272,18 +272,15 @@ const byte playSequence(Voice& voice, Envelope& env) {
             env.loop_i = env.i;
             value = fetchSeqValue(env);
         } else if (value == SEQ_END || value == SEQ_REL) {
-            if (value != SEQ_END) {
-                env.i++;
-            }
             // Found a Release Marker, save it for later
             if (value == SEQ_REL) {
-                env.rel_i = env.i;
+                env.rel_i = env.i + 1;
             }
             // Go back to Loop Marker if there is one
             if (env.loop_i) {
                 env.i = env.loop_i;
+                value = fetchSeqValue(env);
             }
-            value = fetchSeqValue(env);
         } else {
             env.i++;
         }
@@ -295,6 +292,8 @@ const byte playSequence(Voice& voice, Envelope& env) {
             env.i++;
         }
     }
+
+    if (value == SEQ_LOOP || value == SEQ_REL || value == SEQ_END) return 0;
 
     return value;
 }
@@ -312,16 +311,36 @@ inline void playSequences(Voice& voice) {
     if (voice.note_env.id) {
         const byte value = playSequence(voice, voice.note_env);
         if (value) {
-            voice.freq = scale[voice.note] >> (8 - voice.octave);
+            const char rel_note = value % 12;
+            const char rel_octave = value / 12;
+            voice.freq = scale[voice.note + rel_note] >> (8 - (voice.octave + rel_octave));
         }
+    }
+
+    // Timbre Envelope
+    if (voice.timbre_env.id) {
+        const byte value = playSequence(voice, voice.timbre_env);
+        if (value) {
+            voice.pw = value;
+        }
+    }
+
+    // Pitch Envelope
+    // TODO...
+}
+
+void resetSequence(Envelope& env) {
+    if (env.id) {
+        env.i = 1;
+        env.loop_i = env.rel_i = 0;
     }
 }
 
 inline void resetSequences(Voice& voice) {
-    if (voice.volume_env.id) voice.volume_env.i = 0;
-    if (voice.note_env.id) voice.note_env.i = 0;
-    if (voice.timbre_env.id) voice.timbre_env.i = 0;
-    if (voice.pitch_env.id) voice.pitch_env.i = 0;
+    resetSequence(voice.volume_env);
+    resetSequence(voice.note_env);
+    resetSequence(voice.timbre_env);
+    resetSequence(voice.pitch_env);
 }
 
 inline void executeCommand(Voice& voice, const byte cmd) {
@@ -373,9 +392,9 @@ inline void executeCommand(Voice& voice, const byte cmd) {
         case DETUNE: {
             break;
         }
-        case TIMBRE: {
+        case TIMBRE:
+            voice.pw = fetchNextByte(voice);
             break;
-        }
         case VOLUME:
             voice.volume = fetchNextByte(voice);
             break;
