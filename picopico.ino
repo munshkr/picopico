@@ -219,8 +219,12 @@ inline void playNote(Voice& voice, byte note) {
 
     // If note is not a rest, set frequency based on note and current octave
     if (note != REST) {
-        voice.note = (note & 0xf) - 1;
-        voice.freq = scale[voice.note] >> (8 - voice.octave);
+        voice.note = (note & 0xf) - 2;
+        if (voice.waveform == NOISE) {
+            voice.freq = noisePeriods[voice.note];
+        } else {
+            voice.freq = scale[voice.note] >> (8 - voice.octave);
+        }
         voice.amp = amp[voice.volume];
         voice.gate = true;
     }
@@ -313,7 +317,11 @@ inline void playSequences(Voice& voice) {
         if (value) {
             const char rel_note = value % 12;
             const char rel_octave = value / 12;
-            voice.freq = scale[voice.note + rel_note] >> (8 - (voice.octave + rel_octave));
+            if (voice.waveform == NOISE) {
+                voice.freq = noisePeriods[(voice.note + rel_note) % 12];
+            } else {
+                voice.freq = scale[(voice.note + rel_note) % 12] >> (8 - ((voice.octave + rel_octave) % 8));
+            }
         }
     }
 
@@ -463,6 +471,10 @@ void loop() {
             v->gate = false;
             v->pw = DEFAULT_PW;
         }
+        voices[0].waveform = PULSE;
+        voices[1].waveform = PULSE;
+        voices[2].waveform = TRI;
+        voices[3].waveform = NOISE;
         lfsrOut = 0;
         return;
     }

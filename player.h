@@ -7,19 +7,19 @@
 const byte END = 0;
 
 // Note commands
-const byte NOTE_C  = 1;
-const byte NOTE_CS = 2;
-const byte NOTE_D  = 3;
-const byte NOTE_DS = 4;
-const byte NOTE_E  = 5;
-const byte NOTE_F  = 6;
-const byte NOTE_FS = 7;
-const byte NOTE_G  = 8;
-const byte NOTE_GS = 9;
-const byte NOTE_A  = 10;
-const byte NOTE_AS = 11;
-const byte NOTE_B  = 12;
-const byte REST    = 13;
+const byte REST    = 1;
+const byte NOTE_C  = 2;
+const byte NOTE_CS = 3;
+const byte NOTE_D  = 4;
+const byte NOTE_DS = 5;
+const byte NOTE_E  = 6;
+const byte NOTE_F  = 7;
+const byte NOTE_FS = 8;
+const byte NOTE_G  = 9;
+const byte NOTE_GS = 10;
+const byte NOTE_A  = 11;
+const byte NOTE_AS = 12;
+const byte NOTE_B  = 13;
 
 // Note flags
 enum NoteFlag {
@@ -66,6 +66,11 @@ const uint16_t scale[] = {13716, 14532, 15397, 16311, 17281, 18310, 19398, 20552
 // Volume amplitude lookup table (16 entries)
 const uint8_t amp[] = {0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240};
 
+// Noise period counter (12 entries)
+const uint16_t noisePeriods[] = {1200, 1760, 2360, 2960, 3760, 4720, 7080, 9440, 14160, 18880, 37800, 65535};
+
+enum Waveform { PULSE, SAW, TRI, NOISE };
+
 struct Envelope {
     byte      id;                     // Index into Seqs array (1-index, 0 = null)
     byte      i;                      // Current index (1-index)
@@ -100,6 +105,7 @@ struct Voice {
     Envelope  pitch_env;
 
     // Internal registers for sound generation
+    volatile Waveform waveform;
     volatile int16_t  acc;            // Phase accumulator
     volatile uint16_t freq;           // Frequency delta
     volatile uint8_t  amp;            // Amplitude
