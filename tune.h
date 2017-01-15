@@ -10,7 +10,7 @@ const byte Seq3[] PROGMEM = { 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
 const byte Seqs[] = { Seq1, Seq2, Seq3 };
 
 const byte SongData0[] PROGMEM = {
-    NOTE_LEN, 16,
+    NOTE_LEN, 15,
     QUANT_LEN, 12,
     VOLUME_ENV, 1,
     VOLUME, 15,
@@ -23,8 +23,9 @@ const byte SongData0[] PROGMEM = {
 
     END
 };
+
 const byte SongData1[] PROGMEM = {
-    NOTE_LEN, 16,
+    NOTE_LEN, 15,
     QUANT_LEN, 12,
     VOLUME_ENV, 1,
     VOLUME, 7,
@@ -38,8 +39,9 @@ const byte SongData1[] PROGMEM = {
 
     END
 };
+
 const byte SongData2[] PROGMEM = {
-    NOTE_LEN, 8,
+    NOTE_LEN, 7,
     QUANT_LEN, 7,
     OCTAVE, 3,
 
