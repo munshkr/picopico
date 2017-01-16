@@ -395,9 +395,11 @@ inline void executeCommand(Voice& voice, const byte cmd) {
             if (voice.octave > 0) voice.octave--;
             break;
         case TRANSPOSE: {
+            // TODO
             break;
         }
         case DETUNE: {
+            // TODO
             break;
         }
         case TIMBRE:
@@ -413,6 +415,7 @@ inline void executeCommand(Voice& voice, const byte cmd) {
             if (voice.volume > 0) voice.volume--;
             break;
         case PITCH_SWEEP: {
+            // TODO
             break;
         }
         // Select Envelope commands
