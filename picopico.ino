@@ -201,6 +201,7 @@ bool playVoice(Voice& voice) {
             }
         } else if (cmd < 0x80) {
             playNote(voice, cmd);
+            playSequences(voice);
             break;
         } else {
             executeCommand(voice, cmd);
@@ -220,11 +221,6 @@ inline void playNote(Voice& voice, byte note) {
     // If note is not a rest, set frequency based on note and current octave
     if (note != REST) {
         voice.note = (note & 0xf) - 2;
-        if (voice.waveform == NOISE) {
-            voice.freq = noisePeriods[voice.note];
-        } else {
-            voice.freq = scale[voice.note] >> (8 - voice.octave);
-        }
         voice.amp = amp[voice.volume];
         voice.gate = true;
     }
@@ -312,17 +308,13 @@ inline void playSequences(Voice& voice) {
     }
 
     // Note Envelope
-    if (voice.note_env.id) {
-        const byte value = playSequence(voice, voice.note_env);
-        if (value) {
-            const char rel_note = value % 12;
-            const char rel_octave = value / 12;
-            if (voice.waveform == NOISE) {
-                voice.freq = noisePeriods[(voice.note + rel_note) % 12];
-            } else {
-                voice.freq = scale[(voice.note + rel_note) % 12] >> (8 - ((voice.octave + rel_octave) % 8));
-            }
-        }
+    const byte value = voice.note + voice.transpose + (voice.note_env.id ? playSequence(voice, voice.note_env) : 0);
+    const char rel_note = value % 12;
+    const char rel_octave = value / 12;
+    if (voice.waveform == NOISE) {
+        voice.freq = noisePeriods[rel_note];
+    } else {
+        voice.freq = scale[rel_note] >> (8 - ((voice.octave + rel_octave) % 8));
     }
 
     // Timbre Envelope
@@ -395,7 +387,7 @@ inline void executeCommand(Voice& voice, const byte cmd) {
             if (voice.octave > 0) voice.octave--;
             break;
         case TRANSPOSE: {
-            // TODO
+            voice.transpose = (signed char) fetchNextByte(voice);
             break;
         }
         case DETUNE: {
@@ -468,6 +460,7 @@ void loop() {
             v->nlen = DEFAULT_NLEN;
             v->qlen = v->nlen;
             v->octave = DEFAULT_OCTAVE;
+            v->transpose = 0;
             v->volume = DEFAULT_VOL;
             v->track_loop_ptr = NULL;
             v->loops_idx = -1;
