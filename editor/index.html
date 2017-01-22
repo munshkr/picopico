@@ -23,51 +23,14 @@
 
   <body>
     <div id="toolbar">
-      <button title="Ctrl+Enter" onclick="play()">Play</button>
-      <button onclick="stop()">Stop</button>
+      <button id="play" title="Ctrl+Enter">Play</button>
+      <button id="stop">Stop</button>
     </div>
 
     <div id="editor"><pre></pre></div>
 
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.5/ace.js"></script>
-    <script type="text/javascript" src="js/pico.min.js"></script>
-    <script type="text/javascript" src="js/mml.js"></script>
-
-    <script>
-      var editor = ace.edit('editor');
-
-      function play() {
-        stop();
-        Pico.play(playSong(editor.getValue()));
-      }
-
-      function stop() {
-        Pico.pause();
-      }
-
-      //editor.setTheme('ace/theme/monokai');
-      //editor.getSession().setMode('ace/mode/javascript');
-
-      editor.commands.addCommand({
-        name: 'play/stop',
-        bindKey: {win: "Ctrl-Enter", "mac": "Cmd-Enter"},
-        exec: function(editor) {
-          console.log("play");
-          play();
-        }
-      });
-
-      editor.getSession().on('change', function(e) {
-        localStorage.setItem('document', editor.getValue());
-      });
-
-      var savedDoc = localStorage.getItem('document');
-      if (savedDoc && savedDoc !== '') {
-        editor.setValue(savedDoc);
-        editor.clearSelection();
-      }
-
-      editor.focus();
-    </script>
+    <script type="text/javascript" src="dist/pico.min.js"></script>
+    <script type="text/javascript" src="dist/bundle.js"></script>
   </body>
 </html>
