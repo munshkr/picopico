@@ -1,0 +1,15 @@
+{
+  "name": "picopico-editor",
+  "version": "1.0.0",
+  "description": "Picopico MML editor",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Damián Silvani (@munshkr)",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "webpack": "^2.2.0"
+  }
+}
