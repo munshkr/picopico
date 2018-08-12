@@ -4,7 +4,7 @@
   "description": "MML compiler for picopico",
   "main": "index.js",
   "author": "Damián Silvani",
-  "license": "GPLv3",
+  "license": "GPL-3.0-or-later",
   "dependencies": {
     "commander": "^2.17.1",
     "pegjs": "^0.10.0"
