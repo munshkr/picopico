@@ -1,0 +1,11 @@
+{
+  "name": "picopico-compiler",
+  "version": "0.1",
+  "description": "MML compiler for picopico",
+  "main": "index.js",
+  "author": "Damián Silvani",
+  "license": "GPLv3",
+  "dependencies": {
+    "pegjs": "^0.10.0"
+  }
+}
