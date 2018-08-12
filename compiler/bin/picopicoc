@@ -1,0 +1,28 @@
+#!/usr/bin/env node
+const pjson = require('../package.json');
+const process = require('process');
+
+let program = require('commander');
+
+program
+  .version(pjson.version)
+  .usage('[options] <file>')
+  .option('-o, --output [file]', 'output file')
+  .parse(process.argv);
+
+if (!process.argv.slice(2).length) {
+  program.outputHelp();
+  process.exit(1);
+}
+
+if (program.args.length === 0) {
+  console.error('Missing source file');
+  process.exit(1);
+}
+
+if (program.args.length > 1) {
+  console.error(`Invalid arguments: ${program.args}`);
+  process.exit(1);
+}
+
+// TODO
