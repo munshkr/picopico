@@ -1,6 +1,6 @@
 {
   "name": "picopico-compiler",
-  "version": "0.1",
+  "version": "0.1.0",
   "description": "MML compiler for picopico",
   "main": "index.js",
   "author": "Damián Silvani",
