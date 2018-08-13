@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "description": "MML compiler for picopico",
   "main": "index.js",
+  "scripts": {
+    "test": "mocha",
+    "lint": "eslint src/**/*.js test/**/*.js bin/picopicoc"
+  },
   "author": "Damián Silvani",
   "license": "GPL-3.0-or-later",
   "dependencies": {
