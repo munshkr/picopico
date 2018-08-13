@@ -1,0 +1,344 @@
+/*
+ * MML Grammar
+ * ===========
+ */
+
+{
+  function optionalList(value) {
+    return value !== null ? value : [];
+  }
+}
+
+Start
+  = __ doc:Document __ { return doc; }
+
+/* ----- Lexical Grammar ----- */
+
+SourceCharacter
+  = .
+
+S 'whitespace'
+  = '\t'
+  / '\v'
+  / '\f'
+  / ' '
+  / '\u00A0'
+  / '\uFEFF'
+
+LineTerminator
+  = [\n\r\u2028\u2029]
+
+LineTerminatorSequence 'end of line'
+  = '\n'
+  / '\r\n'
+  / '\r'
+  / '\u2028'
+  / '\u2029'
+
+Comment 'comment'
+  = (MultiLineComment
+  / SingleLineComment)
+    { return { type: 'comment', value: text() }; }
+
+MultiLineComment
+  = '/*' (!'*/' SourceCharacter)* '*/'
+
+MultiLineCommentNoLineTerminator
+  = '/*' (!('*/' / LineTerminator) SourceCharacter)* '*/'
+
+SingleLineComment
+  = (';' / '//') (!LineTerminator SourceCharacter)*
+
+Digit 'digit'
+  = [0-9]
+
+Hexit 'hex digit'
+  = [0-9a-fA-F]
+
+DecLiteral "decimal number literal"
+  = neg:[-]? digits:Digit+
+    {
+      return {
+        type: 'number',
+        value: parseInt((!neg ? '' : '-') + digits.join(''), 10)
+      }
+    }
+
+PosDecLiteral "positive decimal number literal"
+  = digits:Digit+
+    { return { type: 'number', value: parseInt(text(), 10) } }
+
+HexLiteral
+  = ('$' / '0x') hexits:Hexit+
+    { return { type: 'number', value: parseInt(hexits.join(''), 16) } }
+
+NumLiteral "number literal"
+  = n:(HexLiteral / DecLiteral)
+    { return { type: 'number', value: n.value }; }
+
+PosNumLiteral "positive number literal"
+  = n:(HexLiteral / PosDecLiteral)
+    { return { type: 'number', value: n.value }; }
+
+
+__ = (S / LineTerminatorSequence)*
+
+/* ----- Elements ----- */
+
+DirectiveName
+  = name:[a-zA-Z\-_]+
+    { return name.join('').toLowerCase(); }
+
+Directive 'directive'
+  = '#' name:DirectiveName arg:(S+ a:[^\n\r]+ { return a.join(''); })?
+    { return { type: 'directive', name: name, arg: arg } }
+
+InstrumentName 'instrument name'
+  = first:[a-z] rest:[a-zA-Z0-9\-_]*
+    { return first + rest.join('') }
+
+ParameterName
+  = chars:[a-zA-Z\-_]+
+    { return chars.join('') }
+
+ParameterValue
+  = Sequence / Interval / RepeatedNumber / NumLiteral
+
+ParameterPair
+  = name:ParameterName __ ':' __ value:ParameterValue __
+    { return { type: 'parameter', name: name, value: value } }
+
+InstrumentBody
+  = '{' __ first:ParameterPair?
+        __ rest:(',' __ p:ParameterPair { return p })*
+        __ ','?
+        __ '}'
+    {
+      var body = {};
+      if (first) body[first.name] = first.value;
+      for (var i = 0; i < rest.length; i++) {
+        body[rest[i].name] = rest[i].value;
+      }
+      return body;
+    }
+
+Instrument
+  = name:InstrumentName S+ first:(InstrumentBody / InstrumentName)
+    rest:(',' __ i:(InstrumentBody / InstrumentName) { return i })*
+    {
+      return {
+        type: 'instrument',
+        name: name,
+        bodies: [first].concat(rest)
+      }
+    }
+
+Command 'command'
+  = channels:[A-Z]+ sequence:(S+ s:CommandSequence { return s })?
+    {
+      return {
+        type: 'command',
+        channels: channels,
+        sequence: optionalList(sequence)
+      }
+    }
+
+Element
+  = Directive
+  / Instrument
+  / Command
+  / Comment
+
+/* ----- Commands ----- */
+
+Note
+  = note:[cdefgab] accidental:('+' / '-')? length:PosDecLiteral? dots:'.'*
+    {
+      return {
+        type: 'note',
+        note: note,
+        accidental: accidental,
+        length: (length && length.value),
+        dots: dots.length,
+      }
+    }
+
+IncOctave
+  = '>'
+    { return { type: 'inc_octave' } }
+
+DecOctave
+  = '<'
+    { return { type: 'dec_octave' } }
+
+SetInstrument
+  = '@' inst:(InstrumentName / InstrumentBody)
+    {
+      var value;
+      if (typeof inst === 'string') {
+        value = { type: 'instrument_name', value: inst };
+      } else {
+        value = { type: 'anonymous_instrument', value: inst };
+      }
+      return { type: 'set_instrument', value: value };
+    }
+
+SetTempo
+  = 't' num:PosDecLiteral
+    { return { type: 'set_tempo', value: num.value }; }
+
+SetNoteLength
+  = 'l' num:PosDecLiteral
+    { return { type: 'set_note_length', value: num.value }; }
+
+SetQuantize
+  = 'q' num:DecLiteral
+    { return { type: 'set_quantize', value: num.value }; }
+
+SetQuantizeFrames
+  = 'Q' num:DecLiteral
+    { return { type: 'set_quantize_frames', value: num.value }; }
+
+SetDelay
+  = 'k' num:PosDecLiteral
+    { return { type: 'set_delay', value: num.value }; }
+
+SetOctave
+  = 'o' num:PosDecLiteral
+    { return { type: 'set_octave', value: num.value }; }
+
+Transpose
+  = 'K' num:DecLiteral
+    { return { type: 'transpose', value: num.value }; }
+
+SetPitch
+  = 'p' num:DecLiteral
+    { return { type: 'set_pitch', value: num.value }; }
+
+SetTimbre
+  = 'V' num:PosDecLiteral
+    { return { type: 'set_timbre', value: num.value }; }
+
+SetVolume
+  = 'v' num:PosDecLiteral
+    { return { type: 'set_volume', value: num.value }; }
+
+IncVolume
+  = 'v+' num:PosDecLiteral?
+    { return { type: 'inc_volume', value: num }; }
+
+DecVolume
+  = 'v-' num:PosDecLiteral?
+    { return { type: 'dec_volume', value: num }; }
+
+Loop
+  = '[' __ seq:CommandSequence? __ ']' times:PosDecLiteral?
+    {
+      return {
+        type: 'loop',
+        body: optionalList(seq),
+        times: ((times && times.value) || 1)
+      };
+    }
+
+Scope
+  = '(' __ seq:CommandSequence? __ ')'
+    {
+      return {
+        type: 'scope',
+        body: optionalList(seq),
+      };
+    }
+
+Rest
+  = 'r' length:PosDecLiteral? dots:'.'*
+    {
+      return {
+        type: 'rest',
+        length: (length && length.value),
+        dots: dots.length
+      };
+    }
+
+AltRest
+  = 's'
+
+CommandAtom
+  = Note
+  / Rest
+  / AltRest
+  / SetTempo
+  / SetNoteLength
+  / IncOctave
+  / DecOctave
+  / SetInstrument
+  / SetQuantize
+  / SetQuantizeFrames
+  / SetDelay
+  / SetOctave
+  / Transpose
+  / SetPitch
+  / SetTimbre
+  / SetVolume
+  / IncVolume
+  / DecVolume
+  / Loop
+  / Scope
+
+CommandSequence
+  = first:CommandAtom rest:(S* a:CommandAtom { return a })*
+    { return [first].concat(rest) }
+
+/* ----- Sequences ----- */
+
+RepeatedNumber
+  = v:NumLiteral "'" t:PosNumLiteral
+    { return { type: 'repeated_number', value: v.value, times: t.value } }
+
+Interval
+  = from:NumLiteral ':' to:NumLiteral step:(':' s:NumLiteral { return s })?
+    {
+      return {
+        type: 'interval',
+        from: from.value,
+        to: to.value,
+        step: (step && step.value)
+      };
+    }
+
+SymbolLiteral
+  = [a-z]+
+    { return { type: 'symbol', value: text() }; }
+
+LoopMarkerLiteral
+  = '|'
+    { return { type: 'loop_marker' }; }
+
+SequenceValue
+  = Interval / NumLiteral / SymbolLiteral / LoopMarkerLiteral
+
+SequenceBody
+  = first:SequenceValue rest:(S __ v:SequenceValue { return v })*
+    { return [first].concat(rest); }
+
+Sequence
+  = '[' __ body:SequenceBody? __ ']'
+    { return { type: 'sequence', value: optionalList(body) }; }
+
+/* ----- Documents ----- */
+
+Body
+  = head:Element tail:(__ e:Element {return e})*
+    {
+      var elements = [head];
+      for (var i = 0; i < tail.length; i++) {
+        elements = elements.concat(tail[i]);
+      }
+      elements = elements
+        .filter(function(e) { return (e.type !== 'comment'); });
+      return elements;
+    }
+
+Document
+  = body:Body?
+    { return { type: 'document', body: optionalList(body) }; }
