@@ -20,6 +20,7 @@ Pretty much inspired by [1-bit symphony](http://www.1bitsymphony.com/) by Trista
 
 Note: This schematic is old and inaccurate (although similar). Please see this [tutorial](https://github.com/munshkr/picopico/wiki/Programming-with-Arduino-Uno) as the protoboard picture reflects more accurately the current design.
 
+
 ![](schematic.png?raw=true)
 
 ## Software
