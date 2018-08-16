@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 const pjson = require('../package.json');
+const fs = require('fs');
+const path = require('path');
 const process = require('process');
+
+const Compiler  = require('../src/compiler');
 
 let program = require('commander');
 
@@ -25,4 +29,33 @@ if (program.args.length > 1) {
   process.exit(1);
 }
 
-// TODO
+
+function abort(err) {
+  if (err.location) {
+    let loc = err.location.start;
+    console.error(`${err.message}, at ${loc.line}:${loc.column}`);
+  } else {
+    console.error(err);
+  }
+  process.exit(1);
+}
+
+function outputPathFromOptions(program) {
+  let inputPath = program.args[0];
+  let basename = path.basename(inputPath, path.extname(inputPath));
+  return `${basename}.h`;
+}
+
+let inputPath = program.args[0];
+let outputPath = program.output || outputPathFromOptions(program);
+
+try {
+  const source = fs.readFileSync(inputPath).toString();
+
+  let compiler = new Compiler();
+  let out = compiler.compile(source);
+
+  fs.writeFileSync(outputPath, out);
+} catch(err) {
+  abort(err);
+}
